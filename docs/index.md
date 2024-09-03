@@ -1,4 +1,4 @@
-# [Your Name]
+# Ty Tuff
 
 Welcome to the [Your Name] repository, part of the Environmental Data Science Innovation and Inclusion Lab (ESIIL). This repository serves as the central hub for our research at ESIIL, hosting your project description, proposals, bio, codebase, and more.
 
