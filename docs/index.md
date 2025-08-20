@@ -37,6 +37,26 @@ We welcome contributions from all group members. To maintain the quality and int
 
 If you encounter any issues or have questions about how to contribute, please refer to the [ESIIL Support Page](https://esiil.org/support) or contact the repository maintainers directly.
 
+## Vibe Code Demo
+
+Below are interactive code blocks demonstrating how to load data and perform a basic analysis. Click the code to run it in your browser.
+
+```vibe
+# Data source example
+import pandas as pd
+pd.read_csv('path/to/dataset.csv').head()
+```
+
+```vibe
+# Data analysis example
+import matplotlib.pyplot as plt
+plt.plot([1, 2, 3], [4, 5, 6])
+plt.title("Sample Plot")
+plt.show()
+```
+
+For more details, see the [data source](data-source.md) and [data analysis](data-analysis.md) documentation.
+
 ## Customize Your Repository
 
 As a new working group, you'll want to make this repository your own. Here's how to get started:
