@@ -1,4 +1,4 @@
-site_name: 'Ty's one off education site'
+site_name: "Ty's one off education site"
 site_description: 'Teaching people how to set up github'
 site_author: Ty Tuff
 site_url: https://cu-esiil.github.io/Ty_test
@@ -13,6 +13,8 @@ copyright: 'Copyright &copy; 2023 University of Colorado Boulder'
 # Page tree
 nav:
   - Home: index.md
+  - Data Source: data-source.md
+  - Data Analysis: data-analysis.md
   - Resources:
        - Code of Conduct: resources/code-of-conduct.md
        - Participant agreement: resources/participant_agreement.md
