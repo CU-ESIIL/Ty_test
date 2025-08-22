@@ -92,9 +92,12 @@
     <section class="panel">
       <h2>3) Climate, Entropy, and Fire Layers</h2>
       <div class="viz short"><canvas id="climate"></canvas></div>
-      <div class="viz short"><canvas id="entropy"></canvas></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="viz short"><canvas id="entropyLines"></canvas></div>
+        <div class="viz short"><canvas id="entropyDots"></canvas></div>
+      </div>
       <div class="viz short"><canvas id="fire"></canvas></div>
-      <div class="caption">Separated layers: climate (blue dome), entropy in fuel network (viridis + graph), fire intensity (reds). Layers drive the polygon in Panel 2.</div>
+      <div class="caption">Separated layers: climate (blue dome), network lines (left) and fuel nodes (right), fire intensity (reds). Layers drive the polygon in Panel 2.</div>
     </section>
 
     <section class="panel">
@@ -199,8 +202,9 @@ function drawGrowth(){ const {ctx,w,h}=fit2D($('growth')); ctx.clearRect(0,0,w,h
 
 // =============== Panel 3: Surfaces =================
 function renderSurface(canvas, config){ const {ctx,w,h}=fit2D(canvas); ctx.clearRect(0,0,w,h); const cx=w/2, cy=h/2, R=Math.min(w,h)*0.40; const side=17; const pts=[]; // grid vs random via state.mix
+  const rand=(config.seed!==undefined)?rng(config.seed):Math.random;
   for(let i=0;i<side;i++){ for(let j=0;j<side;j++){ let gx=i/(side-1), gy=j/(side-1); let x=cx-R + 2*R*gx, y=cy-R + 2*R*gy; // jitter
-      const jitter=(1-state.mix); x += (Math.random()-0.5)*jitter* (2*R/side); y += (Math.random()-0.5)*jitter*(2*R/side);
+      const jitter=(1-state.mix); x += (rand()-0.5)*jitter* (2*R/side); y += (rand()-0.5)*jitter*(2*R/side);
       const dx=x-cx, dy=y-cy; if(dx*dx+dy*dy<=R*R) pts.push([x,y]); } }
   function drawBlob(x,y,v,color){ const r=6+5*v; ctx.fillStyle=color(v); ctx.globalAlpha=0.95; ctx.beginPath(); ctx.arc(x, y-7*v, r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=0.14; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x, y-7*v, r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
   const climH=(x,y)=>{ const dx=x-cx, dy=y-cy; const rr=Math.sqrt(dx*dx+dy*dy)/R; return clamp(1-rr*rr,0,1); };
@@ -237,13 +241,47 @@ function renderSurface(canvas, config){ const {ctx,w,h}=fit2D(canvas); ctx.clear
   }
 }
 
+function entropyData(seed,w,h){
+  const cx=w/2, cy=h/2, R=Math.min(w,h)*0.40; const side=17; const pts=[];
+  const rand=rng(seed);
+  for(let i=0;i<side;i++){ for(let j=0;j<side;j++){ let gx=i/(side-1), gy=j/(side-1); let x=cx-R+2*R*gx, y=cy-R+2*R*gy; const jitter=(1-state.mix); x += (rand()-0.5)*jitter*(2*R/side); y += (rand()-0.5)*jitter*(2*R/side); const dx=x-cx, dy=y-cy; if(dx*dx+dy*dy<=R*R) pts.push([x,y]); } }
+  const k=4; const deg=Array(pts.length).fill(0); const edges=[]; for(let i=0;i<pts.length;i++){ const dists=pts.map((p,j)=>[j,Math.hypot(p[0]-pts[i][0],p[1]-pts[i][1])]); dists.sort((a,b)=>a[1]-b[1]); for(let m=1;m<=k;m++){ const v=dists[m][0]; if(i<v){ edges.push([i,v]); deg[i]++; deg[v]++; } } }
+  const maxDeg=Math.max(...deg,1); const ent=i=>1-deg[i]/maxDeg;
+  return {cx,cy,R,pts,edges,ent};
+}
+
+function renderEntropyLines(canvas,data){
+  const {ctx,w,h}=fit2D(canvas); ctx.clearRect(0,0,w,h);
+  for(const [i,j] of data.edges){ const [x1,y1]=data.pts[i],[x2,y2]=data.pts[j]; ctx.strokeStyle='rgba(100,116,139,0.7)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  ctx.strokeStyle='rgba(100,116,139,0.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(data.cx,data.cy,data.R,0,Math.PI*2); ctx.stroke();
+}
+
+function renderEntropyDots(canvas,data){
+  const {ctx,w,h}=fit2D(canvas); ctx.clearRect(0,0,w,h);
+  const vir=v=>{ const t=clamp(v,0,1); const r=Math.round(68 + 187*t), g=Math.round(1 + 181*t), b=Math.round(84 + 71*(1-t)); return `rgb(${r},${g},${b})`; };
+  function drawBlob(x,y,v){ const r=6+5*v; ctx.fillStyle=vir(v); ctx.globalAlpha=0.95; ctx.beginPath(); ctx.arc(x, y-7*v, r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=0.14; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x, y-7*v, r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+  for(let i=0;i<data.pts.length;i++){ const [x,y]=data.pts[i]; drawBlob(x,y,data.ent(i)); }
+  ctx.strokeStyle='rgba(100,116,139,0.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(data.cx,data.cy,data.R,0,Math.PI*2); ctx.stroke();
+}
+
 // =============== Sidebar: clock =================
 let angle=0, last=performance.now();
 function drawClock(ts){ const {ctx,w,h}=fit2D($('clock')); ctx.clearRect(0,0,w,h); const cx=w/2, cy=h/2, R=Math.min(w,h)*0.42; ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=8; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke(); for(let i=0;i<24;i++){ const a=i/24*2*Math.PI; ctx.beginPath(); ctx.moveTo(cx+R*Math.cos(a), cy+R*Math.sin(a)); ctx.lineTo(cx+(R-8)*Math.cos(a), cy+(R-8)*Math.sin(a)); ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2; ctx.stroke(); }
   const rate=Math.pow(C(),4/3); $('clkOut').textContent=rate.toFixed(2)+'×'; const dt=Math.min(0.05,(ts-last)/1000); last=ts; angle += dt*1.4*rate; ctx.strokeStyle='#2563eb'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+R*0.9*Math.cos(angle), cy+R*0.9*Math.sin(angle)); ctx.stroke(); requestAnimationFrame(drawClock); }
 
 // =============== orchestrate =================
-function drawAll(){ drawGates(); drawPolygon(); drawGrowth(); renderSurface($('climate'),{layer:'climate'}); renderSurface($('entropy'),{layer:'entropy'}); renderSurface($('fire'),{layer:'fire'}); }
+function drawAll(){
+  drawGates();
+  drawPolygon();
+  drawGrowth();
+  renderSurface($('climate'),{layer:'climate'});
+  const seed=Math.floor(Math.random()*1e9);
+  const dims=fit2D($('entropyLines'));
+  const data=entropyData(seed,dims.w,dims.h);
+  renderEntropyLines($('entropyLines'),data);
+  renderEntropyDots($('entropyDots'),data);
+  renderSurface($('fire'),{layer:'fire'});
+}
 let rsz; window.addEventListener('resize',()=>{ clearTimeout(rsz); rsz=setTimeout(drawAll,120); });
 
 // boot
