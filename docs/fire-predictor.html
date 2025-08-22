@@ -169,8 +169,22 @@ function drawPolygon(){ const {ctx,w,h}=fit2D($('polygon')); ctx.clearRect(0,0,w
   ctx.save(); ctx.translate(cx,cy); ctx.scale(scale,scale); ctx.translate(-(minX+maxX)/2, -(minY+maxY)/2);
   ctx.fillStyle='rgba(37,99,235,0.10)'; ctx.strokeStyle='#2563eb'; ctx.lineWidth=3/scale; ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
   // Scale bar (A/A0)
-  const ratio=A/state.A0; const fillFrac = clamp((Math.log10(ratio)-0)/(Math.log10(50)-0),0,1); const fill=$('scaleFill'); fill.style.width=(fillFrac*100).toFixed(1)+'%'; const r = Math.floor(96 + (220-96)*fillFrac), g = Math.floor(165 + (38-165)*fillFrac), b = Math.floor(250 + (38-250)*fillFrac); fill.style.backgroundColor=`rgb(${r},${g},${b})`;
-  const tickEl=$('scaleTicks'); tickEl.innerHTML=''; [1,2,5,10,20,50].forEach(v=>{ const s=document.createElement('span'); s.textContent=v+'×'; tickEl.appendChild(s); });
+  const ratio = A/state.A0;
+  const scaleSteps = [100,200,500,1000,2000,5000,10000];
+  const maxScale = scaleSteps.find(v=>ratio<=v) || scaleSteps[scaleSteps.length-1];
+  const fillFrac = clamp(ratio/maxScale,0,1);
+  const fill = $('scaleFill');
+  fill.style.width = (fillFrac*100).toFixed(1)+'%';
+  const r = Math.floor(96 + (220-96)*fillFrac), g = Math.floor(165 + (38-165)*fillFrac), b = Math.floor(250 + (38-250)*fillFrac);
+  fill.style.backgroundColor = `rgb(${r},${g},${b})`;
+  const tickEl = $('scaleTicks');
+  tickEl.innerHTML='';
+  const scaleFactor = maxScale/50;
+  [1,2,5,10,20,50].forEach(v=>{
+    const s=document.createElement('span');
+    s.textContent=(v*scaleFactor).toFixed(0)+'×';
+    tickEl.appendChild(s);
+  });
   // update stats panel
   $('statA').textContent=(ratio).toFixed(2)+'×'; $('statP').textContent=P_from_A(A).toFixed(2); $('statR').textContent=Rrough.toFixed(2); $('statV').textContent=(state.v0*Cval).toFixed(3); $('statS').textContent=(Cval*ratio).toFixed(2)+' (proxy)'; $('statT').textContent=Math.pow(state.horizonH,4/3).toFixed(2)+'×';
 }
