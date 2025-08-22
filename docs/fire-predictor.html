@@ -42,62 +42,64 @@
 <header>
   <h1>Fire Predictor — Coupling, Scaling, and Entropy</h1>
   <p>Weather & fuels → coupling & gates → polygon geometry (P–A) → fire & entropy layers → predictor stats.</p>
+  <p>This interactive app demonstrates how weather, fuel conditions, and network structure combine to shape fire behaviour. Adjust the sliders below to see how each factor affects coupling, growth, layered visualizations, and predictor statistics.</p>
 </header>
 <div class="wrap">
   <aside class="side">
     <h2>Inputs</h2>
-    <div class="row"><div class="label">Air temperature ΔT (°C)</div><div class="value"><span id="tVal">0.0</span> °C</div></div>
+    <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">Use these controls to set environmental and fuel parameters; outputs update immediately.</p>
+    <div class="row"><label for="temp" class="label">Air temperature ΔT (°C)</label><div class="value"><span id="tVal">0.0</span> °C</div></div>
     <input id="temp" type="range" min="0" max="25" step="0.5" value="0" />
 
-    <div class="row"><div class="label">Wind speed (m·s⁻¹)</div><div class="value"><span id="wVal">0.0</span></div></div>
+    <div class="row"><label for="wind" class="label">Wind speed (m·s⁻¹)</label><div class="value"><span id="wVal">0.0</span></div></div>
     <input id="wind" type="range" min="0" max="25" step="0.5" value="0" />
 
-    <div class="row"><div class="label">Wind direction (° from E)</div><div class="value"><span id="wdVal">0</span>°</div></div>
+    <div class="row"><label for="wd" class="label">Wind direction (° from E)</label><div class="value"><span id="wdVal">0</span>°</div></div>
     <input id="wd" type="range" min="0" max="360" step="5" value="0" />
 
-    <div class="row"><div class="label">Forecast horizon (h)</div><div class="value"><span id="hVal">6</span> h</div></div>
+    <div class="row"><label for="horizon" class="label">Forecast horizon (h)</label><div class="value"><span id="hVal">6</span> h</div></div>
     <input id="horizon" type="range" min="1" max="24" step="1" value="6" />
 
-    <div class="row"><div class="label">Fuel / dryness factor (F)</div><div class="value"><span id="fVal">1.0</span>×</div></div>
+    <div class="row"><label for="fuel" class="label">Fuel / dryness factor (F)</label><div class="value"><span id="fVal">1.0</span>×</div></div>
     <input id="fuel" type="range" min="0.5" max="2.0" step="0.1" value="1.0" />
 
-    <div class="row"><div class="label">Gridness of network (0–1)</div><div class="value"><span id="gVal">0.50</span></div></div>
+    <div class="row"><label for="gridness" class="label">Gridness of network (0–1)</label><div class="value"><span id="gVal">0.50</span></div></div>
     <input id="gridness" type="range" min="0" max="1" step="0.01" value="0.5" />
 
     <div class="stat"><div class="k">Coupling index C</div><div class="v" id="cOut">1.00</div></div>
     <div class="stat"><div class="k">Entropy clock (relative pace)</div><div class="v" id="clkOut">—</div></div>
-    <div class="viz short" id="clockWrap"><canvas id="clock"></canvas></div>
+    <div class="viz short" id="clockWrap"><canvas id="clock" aria-label="Entropy clock showing relative pace" role="img"></canvas></div>
     <div class="stat"><div class="k">Time to death</div><div class="v" id="deathOut">—</div></div>
   </aside>
 
   <main style="display:grid;gap:16px">
     <section class="panel">
       <h2>1) Coupling and Gate Dynamics</h2>
-      <div class="viz"><canvas id="gates"></canvas></div>
+      <div class="viz"><canvas id="gates" aria-label="Illustration of coupling and gate dynamics" role="img"></canvas></div>
       <div class="caption">Two dendritic manifolds (fuel trees). Warmer, windier conditions increase coupling; magenta gates open where tips fall within wind‑biased reach.</div>
     </section>
 
     <section class="panel">
       <h2>2) Perimeter Geometry and Accelerated Growth</h2>
       <div class="viz" id="polyWrap">
-        <canvas id="polygon"></canvas>
+        <canvas id="polygon" aria-label="Fire perimeter polygon" role="img"></canvas>
         <div class="scalebox">
           <div class="bar"><div id="scaleFill" class="fill"></div></div>
           <div class="ticks" id="scaleTicks"></div>
         </div>
       </div>
-      <div class="viz short"><canvas id="growth"></canvas></div>
+      <div class="viz short"><canvas id="growth" aria-label="Area and perimeter growth chart" role="img"></canvas></div>
       <div class="caption">Auto‑zooming perimeter polygon and growth curves. Scale bar shows A/A₀; chart shows A(t) (blue) and P(t) (green, dashed) for the chosen horizon.</div>
     </section>
 
     <section class="panel">
       <h2>3) Climate, Entropy, and Fire Layers</h2>
-      <div class="viz short"><canvas id="climate"></canvas></div>
+      <div class="viz short"><canvas id="climate" aria-label="Climate layer visualization" role="img"></canvas></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="viz short"><canvas id="entropyLines"></canvas></div>
-        <div class="viz short"><canvas id="entropyDots"></canvas></div>
+        <div class="viz short"><canvas id="entropyLines" aria-label="Entropy network lines layer" role="img"></canvas></div>
+        <div class="viz short"><canvas id="entropyDots" aria-label="Entropy node layer" role="img"></canvas></div>
       </div>
-      <div class="viz short"><canvas id="fire"></canvas></div>
+      <div class="viz short"><canvas id="fire" aria-label="Fire intensity layer" role="img"></canvas></div>
       <div class="caption">Separated layers: climate (blue dome), network lines (left) and fuel nodes (right), fire intensity (reds). Layers drive the polygon in Panel 2.</div>
     </section>
 
@@ -113,7 +115,7 @@
           <div class="stat"><div class="k">Time scale (×)</div><div class="v" id="statT">—</div></div>
         </div>
         <div style="position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden">
-          <canvas id="statsSpark"></canvas>
+          <canvas id="statsSpark" aria-label="Area growth sparkline" role="img"></canvas>
         </div>
       </div>
       <div class="caption">Key predictions from the same inputs. Entropy export shown as a qualitative proxy ∝ C·A; sparkline tracks A(t) over the horizon.</div>
