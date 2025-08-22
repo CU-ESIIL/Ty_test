@@ -205,19 +205,28 @@ function renderSurface(canvas, config){ const {ctx,w,h}=fit2D(canvas); ctx.clear
   function drawBlob(x,y,v,color){ const r=6+5*v; ctx.fillStyle=color(v); ctx.globalAlpha=0.95; ctx.beginPath(); ctx.arc(x, y-7*v, r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=0.14; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x, y-7*v, r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
   const climH=(x,y)=>{ const dx=x-cx, dy=y-cy; const rr=Math.sqrt(dx*dx+dy*dy)/R; return clamp(1-rr*rr,0,1); };
   const reds=v=>`rgb(${Math.round(210+40*v)},${Math.round(110*(1-v)+40)},${Math.round(110*(1-v)+40)})`;
-  const blues=v=>`rgb(${Math.round(40+140*(1-v))},${Math.round(120+120*(1-v))},${Math.round(200+40*(1-v))})`;
+  // climate color shifts from blue → red with temperature
+  const climateColor=v=>{
+    const t=clamp(state.dT/25,0,1);
+    const rCold=40+140*(1-v), gCold=120+120*(1-v), bCold=200+40*(1-v);
+    const rWarm=210+40*v, gWarm=110*(1-v)+40, bWarm=110*(1-v)+40;
+    const r=Math.round(rCold*(1-t)+rWarm*t);
+    const g=Math.round(gCold*(1-t)+gWarm*t);
+    const b=Math.round(bCold*(1-t)+bWarm*t);
+    return `rgb(${r},${g},${b})`;
+  };
   const vir=v=>{ const t=clamp(v,0,1); const r=Math.round(68 + 187*t), g=Math.round(1 + 181*t), b=Math.round(84 + 71*(1-t)); return `rgb(${r},${g},${b})`; };
   if(config.layer==='climate'){
     const sprites=pts.map(p=>[p[0],p[1],climH(p[0],p[1])]).sort((a,b)=>(a[1]+0.5*a[2])-(b[1]+0.5*b[2]));
-    for(const [x,y,z] of sprites) drawBlob(x,y,z,blues);
+    for(const [x,y,z] of sprites) drawBlob(x,y,z,climateColor);
     ctx.strokeStyle='rgba(100,116,139,0.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
   } else if(config.layer==='entropy'){
     // kNN edges with gridness
     const k=4; const deg=Array(pts.length).fill(0);
     const edges=[]; for(let i=0;i<pts.length;i++){ const dists=pts.map((p,j)=>[j,Math.hypot(p[0]-pts[i][0],p[1]-pts[i][1])]); dists.sort((a,b)=>a[1]-b[1]); for(let m=1;m<=k;m++){ const v=dists[m][0]; if(i<v){ edges.push([i,v]); deg[i]++; deg[v]++; } } }
     const maxDeg=Math.max(...deg,1); const ent=i=>1-deg[i]/maxDeg;
+    for(const [i,j] of edges){ const [x1,y1]=pts[i],[x2,y2]=pts[j]; ctx.strokeStyle='rgba(100,116,139,0.7)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
     for(let i=0;i<pts.length;i++){ const [x,y]=pts[i]; drawBlob(x,y, ent(i), vir); }
-    for(const [i,j] of edges){ const [x1,y1]=pts[i],[x2,y2]=pts[j]; const e=(ent(i)+ent(j))/2; ctx.strokeStyle=vir(e); ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
     ctx.strokeStyle='rgba(100,116,139,0.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
   } else if(config.layer==='fire'){
     const k=4; const deg=Array(pts.length).fill(0); const edges=[]; for(let i=0;i<pts.length;i++){ const dists=pts.map((p,j)=>[j,Math.hypot(p[0]-pts[i][0],p[1]-pts[i][1])]); dists.sort((a,b)=>a[1]-b[1]); for(let m=1;m<=k;m++){ const v=dists[m][0]; if(i<v){ edges.push([i,v]); deg[i]++; deg[v]++; } } }
