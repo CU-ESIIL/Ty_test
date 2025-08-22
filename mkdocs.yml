@@ -15,6 +15,7 @@ nav:
   - Home: index.md
   - Data Source: data-source.md
   - Data Analysis: data-analysis.md
+  - Fire Predictor: fire-predictor.html
   - Resources:
        - Code of Conduct: resources/code-of-conduct.md
        - Participant agreement: resources/participant_agreement.md
