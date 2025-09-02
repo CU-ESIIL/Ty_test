@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boulder Sky & Satellites — Azimuthal (All‑in‑one)</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#0f1630; --ink:#eaf2ff; --muted:#9bb0d8; --accent:#7dd3fc; --iss:#ff6b6b; --path:#80ffd4; --warn:#ffd166;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:radial-gradient(1200px 700px at 70% 10%,#10183a 0%, #0b1020 55%, #070b17 100%);color:var(--ink);font:14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif}
+    header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1f2a55;background:linear-gradient(180deg,#101a3b,#0b132b)}
+    header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+    header small{color:var(--muted)}
+
+    main{display:grid;grid-template-columns:320px 1fr;gap:16px;height:calc(100% - 58px);padding:16px}
+
+    .panel{background:var(--panel);border:1px solid #1d274e;border-radius:16px;box-shadow:0 12px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03)}
+    #controls{padding:16px;display:flex;flex-direction:column;gap:14px}
+    #controls h2{margin:6px 0 4px 0;font-size:13px;color:var(--muted);letter-spacing:.3px;font-weight:600;text-transform:uppercase}
+    .row{display:flex;align-items:center;gap:8px}
+    label{font-weight:600;color:#cfe2ff}
+    input[type="range"]{width:100%}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #223062;border-radius:999px;background:#121b39}
+    .tag{padding:2px 8px;border:1px solid #244278;border-radius:20px;background:#0f1f45;color:#bcd0ff;font-size:12px}
+
+    .hint{font-size:12px;color:var(--muted)}
+    .btn{cursor:pointer;border:1px solid #24507a;background:#0e2a47;color:#d9f1ff;padding:6px 10px;border-radius:10px;transition:transform .05s ease}
+    .btn:hover{transform:translateY(-1px)}
+    select, textarea, input[type="text"], input[type="datetime-local"]{width:100%;padding:8px 10px;border-radius:10px;border:1px solid #20325f;background:#0e1633;color:#e6f0ff}
+
+    #skywrap{position:relative;display:grid;grid-template-rows:auto 1fr;}
+    #legend{padding:10px 14px;border-bottom:1px solid #1c254b;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    #legend .key{display:flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+    .dot.iss{background:var(--iss)}
+    .dot.sat{background:#79e2b8}
+    .dot.star{background:#fff}
+    .dot.trail{background:var(--path)}
+
+    canvas{width:100%;height:100%;display:block;border-radius:0 0 16px 16px}
+    #overlay{position:absolute;inset:40px 20px auto auto;background:rgba(10,16,32,.7);backdrop-filter:blur(4px);border:1px solid #244278;border-radius:12px;padding:10px 12px;max-width:320px}
+    #overlay h3{margin:0 0 6px 0;font-size:13px;color:#c7d8ff}
+    #overlay .kv{font-size:12px;color:#b6c9ff;display:grid;grid-template-columns:92px 1fr;gap:4px}
+    .warn{color:var(--warn)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    details{border:1px dashed #244278;padding:10px;border-radius:12px}
+    details summary{cursor:pointer;color:#bcd0ff}
+    .notice{font-size:12px;color:#9db7ff}
+    .split{display:flex;gap:8px;align-items:center}
+    .grow{flex:1}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Boulder Sky & Satellites — Azimuthal Projection</h1>
+    <small>Observer: Boulder, CO (40.015°N, −105.270°E, 1.62 km)</small>
+  </header>
+
+  <main>
+    <!-- Controls -->
+    <section id="controls" class="panel">
+      <div>
+        <h2>Time</h2>
+        <div class="row">
+          <span class="tag">Local</span>
+          <input id="dt" type="datetime-local" />
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label for="slider" style="min-width:90px">Offset</label>
+          <input id="slider" type="range" min="-720" max="+720" step="1" value="0" />
+          <span class="tag"><span id="offsetLabel">0</span> min</span>
+        </div>
+        <div class="row" style="margin-top:6px;gap:10px">
+          <button class="btn" id="nowBtn">Now</button>
+          <button class="btn" id="rew2">−2h</button>
+          <button class="btn" id="rew">−30m</button>
+          <button class="btn" id="fwd">+30m</button>
+          <button class="btn" id="fwd2">+2h</button>
+        </div>
+      </div>
+
+      <div>
+        <h2>Layers</h2>
+        <div class="row">
+          <label class="pill"><input id="starsOn" type="checkbox" checked /> Stars</label>
+          <label class="pill"><input id="gridOn" type="checkbox" checked /> Grid</label>
+          <label class="pill"><input id="trailsOn" type="checkbox" /> Trails (±30m)</label>
+        </div>
+      </div>
+
+      <div>
+        <h2>Projection</h2>
+        <select id="projection">
+          <option value="aeqd">Azimuthal Equidistant (planetarium)</option>
+          <option value="stereo">Stereographic</option>
+        </select>
+      </div>
+
+      <div>
+        <h2>Satellites</h2>
+        <p class="hint">Self‑contained demo with embedded Kepler elements parsed from TLEs. Accuracy is reasonable over hours; for precision, paste fresh TLEs below. Labels appear near points; only above‑horizon satellites are shown by default.</p>
+        <details>
+          <summary>Show / edit embedded TLEs</summary>
+          <textarea id="tleBox" rows="12" spellcheck="false" class="mono"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" id="loadTLE">Load TLEs</button>
+            <span class="notice">Paste 3‑line blocks: name + line1 + line2</span>
+          </div>
+        </details>
+      </div>
+
+      <div>
+        <h2>Notes</h2>
+        <ul class="hint">
+          <li>North at top; azimuth increases clockwise (N→E→S→W). Radius encodes zenith distance (center = zenith, rim = horizon).</li>
+          <li>Time slider shifts minutes from the chosen local time.</li>
+          <li class="warn">Embedded orbits use a simple two‑body propagation (no SGP4 perturbations). For teaching & intuition.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Sky -->
+    <section id="skywrap" class="panel">
+      <div id="legend">
+        <div class="key"><span class="dot star"></span> Stars</div>
+        <div class="key"><span class="dot sat"></span> Satellites</div>
+        <div class="key"><span class="dot iss"></span> ISS</div>
+        <div class="key"><span class="dot trail"></span> Trails</div>
+        <div class="key">|</div>
+        <div class="key">UTC: <span id="utcTime">—</span></div>
+        <div class="key">LST: <span id="lstTime">—</span></div>
+      </div>
+      <canvas id="sky"></canvas>
+      <div id="overlay" class="panel">
+        <h3>Pointing</h3>
+        <div class="kv">
+          <div>Azimuth</div><div><span id="az">—</span>°</div>
+          <div>Altitude</div><div><span id="alt">—</span>°</div>
+          <div>Range</div><div><span id="rng">—</span> km</div>
+          <div>Object</div><div id="obj">—</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ======= Constants & Observer (Boulder, CO) =======
+    const OBS = { latDeg: 40.014984, lonDeg: -105.270546, h_km: 1.62 };
+    const DEG = Math.PI/180, RAD = 180/Math.PI, TWOPI = Math.PI*2;
+    const mu = 398600.4418; // km^3/s^2 (Earth)
+    const WGS84 = { a: 6378.137, f: 1/298.257223563 };
+    const e2 = WGS84.f*(2 - WGS84.f);
+
+    function mod(a,b){ return ((a % b) + b) % b }
+    function clamp(x,a,b){ return Math.max(a, Math.min(b,x)) }
+    function toJulian(date){ return date.getTime()/86400000 + 2440587.5 }
+    function GMST(date){
+      // Vallado style
+      const jd = toJulian(date);
+      const T = (jd - 2451545.0)/36525.0;
+      let gmst = 67310.54841 + (876600.0*3600 + 8640184.812866)*T + 0.093104*T*T - 6.2e-6*T*T*T; // seconds
+      gmst = ((gmst % 86400) + 86400) % 86400;
+      return (gmst/240.0) * DEG; // radians
+    }
+
+    function lstRadians(date, lonRad){ return mod(GMST(date) + lonRad, TWOPI) }
+
+    function ecefFromGeodetic(lat, lon, h){
+      const sinφ = Math.sin(lat), cosφ = Math.cos(lat);
+      const N = WGS84.a / Math.sqrt(1 - e2*sinφ*sinφ);
+      const x = (N + h)*cosφ*Math.cos(lon);
+      const y = (N + h)*cosφ*Math.sin(lon);
+      const z = (N*(1 - e2) + h)*sinφ;
+      return [x,y,z];
+    }
+
+    function eciToEcef(rEci, date){
+      const θ = GMST(date); const c = Math.cos(θ), s = Math.sin(θ);
+      const [x,y,z] = rEci; return [ c*x + s*y, -s*x + c*y, z ];
+    }
+
+    function topocentricAzElRange(rEcef, obsEcef, lat, lon){
+      // ENU basis
+      const dx = rEcef[0]-obsEcef[0], dy=rEcef[1]-obsEcef[1], dz=rEcef[2]-obsEcef[2];
+      const sinλ=Math.sin(lon), cosλ=Math.cos(lon), sinφ=Math.sin(lat), cosφ=Math.cos(lat);
+      const t = [ -sinλ*dx + cosλ*dy,
+                  -sinφ*cosλ*dx - sinφ*sinλ*dy + cosφ*dz,
+                   cosφ*cosλ*dx + cosφ*sinλ*dy + sinφ*dz ];
+      const [e,n,u] = t; const rng = Math.hypot(e,n,u);
+      const az = mod(Math.atan2(e,n), TWOPI); // east of north
+      const el = Math.asin(u/rng);
+      return { az, el, rng };
+    }
+
+    // ======= Minimal TLE parser & Kepler propagation (two‑body) =======
+    function parseTLEBlocks(text){
+      const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      const sats=[];
+      for(let i=0;i<lines.length;i++){
+        if(lines[i].startsWith('1 ') && i>0 && i+1<lines.length && lines[i+1].startsWith('2 ')){
+          const name = lines[i-1];
+          const L1 = lines[i];
+          const L2 = lines[i+1];
+          const epochStr = L1.slice(18,32); // YYDDD.DDDDDDDD
+          const yy = parseInt(epochStr.slice(0,2),10);
+          const year = (yy < 57 ? 2000+yy : 1900+yy);
+          const doy = parseFloat(epochStr.slice(2));
+          const epoch = doyToDate(year, doy);
+          const i_deg = parseFloat(L2.slice(8,16));
+          const raan_deg = parseFloat(L2.slice(17,25));
+          const ecc_str = L2.slice(26,33).trim();
+          const ecc = parseFloat('0.'+ecc_str);
+          const argp_deg = parseFloat(L2.slice(34,42));
+          const M_deg = parseFloat(L2.slice(43,51));
+          const n_rev_per_day = parseFloat(L2.slice(52,63));
+          sats.push({ name, epoch, i:i_deg*DEG, Ω: raan_deg*DEG, e:ecc, ω:argp_deg*DEG, M0:M_deg*DEG, n: n_rev_per_day*TWOPI/86400 });
+        }
+      }
+      return sats;
+    }
+
+    function doyToDate(year, doy){
+      const jan1 = new Date(Date.UTC(year,0,1,0,0,0));
+      return new Date(jan1.getTime() + (doy-1)*86400000);
+    }
+
+    function keplerPropagate(sat, date){
+      // time since epoch (seconds)
+      const dt = (date - sat.epoch)/1000; // s
+      const n = sat.n; // rad/s
+      const a = Math.cbrt(mu/(n*n)); // km
+      const M = mod(sat.M0 + n*dt, TWOPI);
+      // Solve Kepler: M = E - e sinE
+      let E = M; // initial
+      for(let k=0;k<8;k++){ const f = E - sat.e*Math.sin(E) - M; const fp = 1 - sat.e*Math.cos(E); E -= f/fp }
+      const cosE = Math.cos(E), sinE = Math.sin(E);
+      const r = a*(1 - sat.e*cosE);
+      const ν = Math.atan2(Math.sqrt(1 - sat.e*sat.e)*sinE, cosE - sat.e);
+      const u = sat.ω + ν; // argument of latitude
+      const cosu=Math.cos(u), sinu=Math.sin(u), cosΩ=Math.cos(sat.Ω), sinΩ=Math.sin(sat.Ω), cosi=Math.cos(sat.i), sini=Math.sin(sat.i);
+      // position in ECI (km)
+      const x = r*(cosΩ*cosu - sinΩ*sinu*cosi);
+      const y = r*(sinΩ*cosu + cosΩ*sinu*cosi);
+      const z = r*(sini*sinu);
+      return [x,y,z];
+    }
+
+    // ======= Bright Stars (J2000 approx: RA hours, Dec deg, Mag) =======
+    const STARS = [
+      {n:'Sirius', rh:6+45/60, dd:-16.716, m:-1.46},
+      {n:'Arcturus', rh:14+15.7/60, dd:19.18, m:-0.05},
+      {n:'Vega', rh:18+36.9/60, dd:38.78, m:0.03},
+      {n:'Capella', rh:5+16.7/60, dd:45.99, m:0.08},
+      {n:'Rigel', rh:5+14.5/60, dd:-8.20, m:0.18},
+      {n:'Procyon', rh:7+39.3/60, dd:5.23, m:0.34},
+      {n:'Betelgeuse', rh:5+55.2/60, dd:7.41, m:0.45},
+      {n:'Altair', rh:19+50.8/60, dd:8.87, m:0.77},
+      {n:'Aldebaran', rh:4+35.9/60, dd:16.51, m:0.85},
+      {n:'Spica', rh:13+25.6/60, dd:-11.16, m:1.04},
+      {n:'Pollux', rh:7+45.3/60, dd:28.03, m:1.14},
+      {n:'Fomalhaut', rh:22+57.7/60, dd:-29.62, m:1.16},
+      {n:'Deneb', rh:20+41.4/60, dd:45.27, m:1.25},
+      {n:'Regulus', rh:10+8.4/60, dd:11.97, m:1.36},
+      {n:'Dubhe', rh:11+3.7/60, dd:61.75, m:1.79},
+      {n:'Antares', rh:16+29.5/60, dd:-26.43, m:1.09},
+      {n:'Castor', rh:7+34.6/60, dd:31.89, m:1.58},
+      {n:'Bellatrix', rh:5+25.2/60, dd:6.35, m:1.64},
+      {n:'Mirfak', rh:3+24.3/60, dd:49.86, m:1.79},
+      {n:'Alkaid', rh:13+47.6/60, dd:49.31, m:1.86},
+    ].map(s=>({ ...s, ra:s.rh*15*DEG, dec:s.dd*DEG }));
+
+    // ======= Embedded TLEs (illustrative; not guaranteed current) =======
+    const DEFAULT_TLES = `ISS (ZARYA)
+1 25544U 98067A   25186.50000000  .00016717  00000-0  10270-3 0  9993
+2 25544  51.6420  65.0000 0005600 120.0000 240.0000 15.49700000    16
+HUBBLE SPACE TELESCOPE
+1 20580U 90037B   25180.20000000  .00000800  00000-0  34000-4 0  9996
+2 20580  28.4690 210.0000 0003000  70.0000 290.0000 15.09100000    10
+LANDSAT 8
+1 39084U 13008A   25170.00000000  .00000015  00000-0  10000-4 0  9991
+2 39084  98.2200 130.0000 0001400  90.0000 270.0000 14.57110000    15
+LANDSAT 9
+1 49260U 21088A   25170.00000000  .00000020  00000-0  11000-4 0  9992
+2 49260  98.2200 310.0000 0001500  90.0000 270.0000 14.57110000    12
+NOAA-20 (JPSS-1)
+1 43013U 17073A   25170.00000000  .00000030  00000-0  12000-4 0  9994
+2 43013  98.7000 130.0000 0001000  80.0000 280.0000 14.19500000    18
+TERRA
+1 25994U 99068A   25170.00000000  .00000010  00000-0  90000-5 0  9995
+2 25994  98.2000  20.0000 0001500  70.0000 290.0000 14.57100000    11
+AQUA
+1 27424U 02022A   25170.00000000  .00000010  00000-0  90000-5 0  9996
+2 27424  98.2000 340.0000 0001500  70.0000 290.0000 14.57100000    12
+SENTINEL-2A
+1 40697U 15028A   25170.00000000  .00000020  00000-0  10000-4 0  9993
+2 40697  98.6200 120.0000 0001500  90.0000 270.0000 14.30800000    14
+SENTINEL-2B
+1 42063U 17013A   25170.00000000  .00000020  00000-0  10000-4 0  9996
+2 42063  98.6200 300.0000 0001500  90.0000 270.0000 14.30800000    11`;
+
+    // ======= Sky rendering =======
+    const canvas = document.getElementById('sky');
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+    const state = {
+      sats: [],
+      observerECEF: null,
+      nowLocal: new Date(),
+      baseLocal: null,
+      offsetMin: 0,
+      projection: 'aeqd',
+      showStars: true,
+      showGrid: true,
+      showTrails: false,
+      pick: null,
+    };
+
+    // Initialize controls
+    const tzLocalISO = (d)=>{
+      // YYYY-MM-DDThh:mm local (no seconds)
+      const pad = (n)=>String(n).padStart(2,'0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+
+    const dtInput = document.getElementById('dt');
+    const slider = document.getElementById('slider');
+    const offsetLabel = document.getElementById('offsetLabel');
+    const nowBtn = document.getElementById('nowBtn');
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Denver';
+
+    function setBaseNow(){
+      state.nowLocal = new Date();
+      state.baseLocal = new Date(state.nowLocal);
+      dtInput.value = tzLocalISO(state.baseLocal);
+      slider.value = 0; state.offsetMin = 0; offsetLabel.textContent = '0';
+      render();
+    }
+
+    // Buttons
+    nowBtn.onclick = setBaseNow;
+    document.getElementById('rew').onclick = ()=>{ slider.value = (+slider.value) - 30; slider.dispatchEvent(new Event('input')) };
+    document.getElementById('rew2').onclick = ()=>{ slider.value = (+slider.value) - 120; slider.dispatchEvent(new Event('input')) };
+    document.getElementById('fwd').onclick = ()=>{ slider.value = (+slider.value) + 30; slider.dispatchEvent(new Event('input')) };
+    document.getElementById('fwd2').onclick = ()=>{ slider.value = (+slider.value) + 120; slider.dispatchEvent(new Event('input')) };
+
+    dtInput.addEventListener('change', ()=>{ state.baseLocal = new Date(dtInput.value); render() });
+    slider.addEventListener('input', ()=>{ state.offsetMin = +slider.value; offsetLabel.textContent = slider.value; render() });
+
+    document.getElementById('projection').addEventListener('change', (e)=>{ state.projection = e.target.value; render() });
+    document.getElementById('starsOn').addEventListener('change', (e)=>{ state.showStars = e.target.checked; render() });
+    document.getElementById('gridOn').addEventListener('change', (e)=>{ state.showGrid = e.target.checked; render() });
+    document.getElementById('trailsOn').addEventListener('change', (e)=>{ state.showTrails = e.target.checked; render() });
+
+    // TLE UI
+    const tleBox = document.getElementById('tleBox');
+    document.getElementById('loadTLE').onclick = ()=>{ state.sats = parseTLEBlocks(tleBox.value); render() };
+
+    // Canvas sizing
+    function resize(){
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(800, Math.floor(rect.width*dpr));
+      canvas.height = Math.max(600, Math.floor((rect.height||600)*dpr));
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      render();
+    }
+    window.addEventListener('resize', resize);
+
+    // Convert date local+offset to UTC Date
+    function currentDateUTC(){
+      const base = state.baseLocal || new Date();
+      const t = new Date(base.getTime() + state.offsetMin*60000);
+      // construct UTC date with same wall clock in local? No — use t as local and convert to real Date; JS stores in UTC internally.
+      return new Date(t);
+    }
+
+    // LST & observer ECEF precompute
+    const obsLat = OBS.latDeg*DEG, obsLon = OBS.lonDeg*DEG, obsH = OBS.h_km;
+    const obsECEF = ecefFromGeodetic(obsLat, obsLon, obsH);
+
+    // Projection helpers (az [0..2π), el [−π/2..+π/2]) -> (x,y)
+    function project(az, el, R){
+      const z = Math.PI/2 - el; // zenith distance
+      let ρ;
+      if(state.projection==='aeqd'){
+        ρ = (z/ (Math.PI/2)) * R; // linear in zenith angle (scaled)
+      }else{ // stereographic
+        ρ = 2*R*Math.tan(z/2);
+        ρ = Math.min(ρ, R); // cap at horizon
+      }
+      const x = ρ * Math.sin(az);
+      const y = -ρ * Math.cos(az);
+      return [x,y];
+    }
+
+    // Draw utilities
+    function drawCircle(x,y,r,stroke,fill){
+      ctx.beginPath(); ctx.arc(x,y,r,0,TWOPI);
+      if(fill){ ctx.fillStyle = fill; ctx.fill() }
+      if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke() }
+    }
+
+    function drawLabel(x,y,text,color){
+      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif';
+      const pad=3; const m = ctx.measureText(text);
+      const w = m.width + 2*pad, h = 16;
+      ctx.fillStyle = 'rgba(10,16,32,0.75)';
+      ctx.strokeStyle = '#2a427a';
+      ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(x, y-h, w, h, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = color || '#eaf2ff';
+      ctx.fillText(text, x+pad, y-4);
+    }
+
+    function drawGrid(cx, cy, R){
+      ctx.save(); ctx.translate(cx,cy);
+      ctx.strokeStyle = 'rgba(160,190,255,0.25)'; ctx.lineWidth=1;
+      // Horizon
+      drawCircle(0,0,R,'rgba(180,200,255,0.35)');
+      // Altitude rings 30°, 60°
+      [30,60].forEach(al=>{ const ρ = ( (90-al)/90 ) * R; drawCircle(0,0,ρ,'rgba(160,190,255,0.2)') });
+      // Cardinal spokes
+      for(let k=0;k<4;k++){
+        const az = k*Math.PI/2; const [x,y]=project(az,0,R);
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(x,y); ctx.stroke();
+      }
+      // Cardinal labels
+      const labs = [['N',0],['E',Math.PI/2],['S',Math.PI],['W',3*Math.PI/2]];
+      labs.forEach(([t,a])=>{
+        const [x,y]=project(a,0,R); drawLabel(x-6,y+18,t,'#cfe2ff')
+      })
+      ctx.restore();
+    }
+
+    function raDecToAzEl(ra, dec, date){
+      const lst = lstRadians(date, obsLon);
+      const ha = mod(lst - ra, TWOPI); // hour angle
+      const sinAlt = Math.sin(dec)*Math.sin(obsLat) + Math.cos(dec)*Math.cos(obsLat)*Math.cos(ha);
+      const alt = Math.asin(clamp(sinAlt,-1,1));
+      const az = mod(Math.atan2(Math.sin(ha), Math.cos(ha)*Math.sin(obsLat) - Math.tan(dec)*Math.cos(obsLat)), TWOPI);
+      return { az, el: alt, lst };
+    }
+
+    // Trails for satellites
+    function computeTrail(sat, date, minutes, step){
+      const pts=[]; const half = minutes/2; const start = new Date(date.getTime() - half*60000);
+      for(let m=0;m<=minutes;m+=step){
+        const t = new Date(start.getTime() + m*60000);
+        const rEci = keplerPropagate(sat,t); const rEcef = eciToEcef(rEci,t);
+        const {az,el} = topocentricAzElRange(rEcef, obsECEF, obsLat, obsLon);
+        if(el>0) pts.push({az,el});
+      }
+      return pts;
+    }
+
+    function drawTrail(pts, cx, cy, R){
+      if(pts.length<2) return; ctx.save(); ctx.translate(cx,cy);
+      ctx.beginPath();
+      pts.forEach((p,i)=>{ const [x,y]=project(p.az,p.el,R); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y) });
+      ctx.strokeStyle = 'rgba(128,255,212,0.7)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+    }
+
+    function render(){
+      const rect = canvas.getBoundingClientRect();
+      const W = canvas.width/dpr, H = canvas.height/dpr;
+      ctx.clearRect(0,0,W,H);
+
+      // Compute time
+      const date = currentDateUTC();
+      document.getElementById('utcTime').textContent = date.toISOString().replace('T',' ').replace('.000Z',' UTC');
+      const lstRad = lstRadians(date, obsLon); const lstHours = mod(lstRad*RAD/15,24);
+      const hrs = Math.floor(lstHours), mins = Math.floor((lstHours-hrs)*60);
+      document.getElementById('lstTime').textContent = `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')} LST`;
+
+      const cx = W*0.5, cy = H*0.54; const R = Math.min(W,H)*0.42;
+
+      // Sky background
+      const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+      grad.addColorStop(0,'#0b152e'); grad.addColorStop(1,'#081024');
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx,cy,R+12,0,TWOPI); ctx.fill();
+
+      if(state.showGrid) drawGrid(cx,cy,R);
+
+      // Stars
+      if(state.showStars){
+        ctx.save(); ctx.translate(cx,cy);
+        for(const s of STARS){
+          const {az,el} = raDecToAzEl(s.ra, s.dec, date);
+          if(el<=0) continue; // above horizon only
+          const [x,y] = project(az,el,R);
+          const size = Math.max(1, 3.5 - 0.5*(s.m+1.5));
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y,size,0,TWOPI); ctx.fill();
+          // label some brightest
+          if(s.m < 0.2){ drawLabel(x+6,y,s.n) }
+        }
+        ctx.restore();
+      }
+
+      // Satellites
+      ctx.save(); ctx.translate(cx,cy);
+      for(const sat of state.sats){
+        const rEci = keplerPropagate(sat, date);
+        const rEcef = eciToEcef(rEci, date);
+        const {az, el, rng} = topocentricAzElRange(rEcef, obsECEF, obsLat, obsLon);
+        if(el <= 0) continue; // hide below horizon
+        const [x,y] = project(az, el, R);
+        // Trail
+        if(state.showTrails){ const pts = computeTrail(sat,date,60,2); drawTrail(pts,cx,cy,R) }
+        // Point
+        ctx.fillStyle = (sat.name||'').toUpperCase().includes('ISS') ? getComputedStyle(document.documentElement).getPropertyValue('--iss') : '#79e2b8';
+        ctx.beginPath(); ctx.arc(x,y,4,0,TWOPI); ctx.fill();
+        drawLabel(x+8,y, sat.name || 'SAT');
+      }
+      ctx.restore();
+
+      // Overlay default
+      document.getElementById('az').textContent = '—';
+      document.getElementById('alt').textContent = '—';
+      document.getElementById('rng').textContent = '—';
+      document.getElementById('obj').textContent = '—';
+
+      // Mouse hover to sample az/el
+      // (simple: nearest sat label)
+    }
+
+    // Boot
+    function bootstrap(){
+      // Set base time to now (local)
+      setBaseNow();
+      // Seed TLEs box and parse
+      tleBox.value = DEFAULT_TLES;
+      state.sats = parseTLEBlocks(DEFAULT_TLES);
+      // Size canvas
+      resize();
+      // Pointer move to show nearest object (simple heuristic)
+      canvas.addEventListener('mousemove', (ev)=>{
+        const rect = canvas.getBoundingClientRect();
+        const x = (ev.clientX - rect.left)/dpr; const y = (ev.clientY - rect.top)/dpr;
+        const W = canvas.width/dpr, H = canvas.height/dpr; const cx = W*0.5, cy = H*0.54; const R = Math.min(W,H)*0.42;
+        const date = currentDateUTC();
+        let best=null, bestd=1e9;
+        for(const sat of state.sats){
+          const rEci = keplerPropagate(sat,date); const rEcef = eciToEcef(rEci,date);
+          const {az,el,rng} = topocentricAzElRange(rEcef, obsECEF, obsLat, obsLon);
+          if(el<=0) continue; const [sx,sy]=project(az,el,R); const dx=sx+cx-x, dy=sy+cy-y; const d=Math.hypot(dx,dy);
+          if(d<bestd){ bestd=d; best={name:sat.name, az, el, rng} }
+        }
+        if(best && bestd<40){
+          document.getElementById('az').textContent = (best.az*RAD).toFixed(1);
+          document.getElementById('alt').textContent = (best.el*RAD).toFixed(1);
+          document.getElementById('rng').textContent = best.rng.toFixed(0);
+          document.getElementById('obj').textContent = best.name;
+        }
+      });
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>
