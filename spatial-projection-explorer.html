@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spatial Projection Explorer</title>
+<style>
+  body {margin:0;display:flex;height:100vh;background:#0b1020;color:#e8f0ff;font-family:sans-serif;}
+  #controls {width:300px;padding:16px;background:#11182e;overflow-y:auto;}
+  #map {flex:1;position:relative;background:#0b1020;}
+  label {display:block;margin-top:12px;color:#9fb0d1;}
+  input, select {width:100%;margin-top:4px;}
+  svg {width:100%;height:100%;}
+</style>
+</head>
+<body>
+<div id="controls">
+  <h2>Spatial Projection Explorer</h2>
+  <label>Projection
+    <select id="projection">
+      <option value="equirectangular">Plate Carrée (Equirectangular)</option>
+      <option value="mercator">Mercator</option>
+      <option value="orthographic">Orthographic</option>
+      <option value="equalEarth">Equal Earth</option>
+      <option value="naturalEarth1">Natural Earth 1</option>
+    </select>
+  </label>
+  <label>Latitude
+    <input type="range" id="lat" min="-89" max="89" value="0">
+  </label>
+  <label>Longitude
+    <input type="range" id="lon" min="-180" max="180" value="0">
+  </label>
+</div>
+<div id="map">
+  <svg id="svg"></svg>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4/dist/d3-geo-projection.min.js"></script>
+<script>
+const svg = d3.select("#svg");
+const g = svg.append("g");
+const width = window.innerWidth-300;
+const height = window.innerHeight;
+svg.attr("viewBox",`0 0 ${width} ${height}`);
+
+const graticule = d3.geoGraticule10();
+const sphere = {type:"Sphere"};
+
+let projection = d3.geoEquirectangular().fitSize([width,height],sphere);
+let path = d3.geoPath(projection);
+
+const spherePath = g.append("path").attr("fill","#0a1228").attr("stroke","#263a6b");
+const graticulePath = g.append("path").attr("fill","none").attr("stroke","#27457e").attr("stroke-width",0.5);
+const polyPath = g.append("path").attr("fill","rgba(125,211,252,0.35)").attr("stroke","#7dd3fc").attr("stroke-width",1.5);
+
+function getProjection(name){
+  switch(name){
+    case "equirectangular": return d3.geoEquirectangular();
+    case "mercator": return d3.geoMercator();
+    case "orthographic": return d3.geoOrthographic();
+    case "equalEarth": return d3.geoEqualEarth();
+    case "naturalEarth1": return d3.geoNaturalEarth1();
+    default: return d3.geoEquirectangular();
+  }
+}
+
+function update(){
+  const lat = +document.getElementById("lat").value;
+  const lon = +document.getElementById("lon").value;
+  const projName = document.getElementById("projection").value;
+  projection = getProjection(projName).fitSize([width,height],sphere);
+  path = d3.geoPath(projection);
+
+  spherePath.attr("d",path(sphere));
+  graticulePath.attr("d",path(graticule));
+
+  const circle = d3.geoCircle().center([lon,lat]).radius(10)();
+  polyPath.attr("d",path(circle));
+}
+
+document.getElementById("lat").addEventListener("input",update);
+document.getElementById("lon").addEventListener("input",update);
+document.getElementById("projection").addEventListener("change",update);
+
+update();
+</script>
+</body>
+</html>
