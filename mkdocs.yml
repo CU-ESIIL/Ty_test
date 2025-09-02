@@ -16,6 +16,7 @@ nav:
   - Data Source: data-source.md
   - Data Analysis: data-analysis.md
   - Fire Predictor: fire-predictor.html
+  - Spatial Projection Explorer: spatial-projection-explorer.html
   - Resources:
        - Code of Conduct: resources/code-of-conduct.md
        - Participant agreement: resources/participant_agreement.md
